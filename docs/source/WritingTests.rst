@@ -85,7 +85,7 @@ Avocado supports the most common exit statuses:
 * ``FAIL`` - test did not result in the expected outcome. A failure points
   at a (possible) bug in the tested subject, and not in the test itself.
   When the test (and its) execution breaks, an ``ERROR`` and not a ``FAIL``
-  is reported."
+  is reported.
 * ``ERROR`` - this points (probably) at a bug in the test itself, and not
   in the subject being tested.It is usually caused by uncaught exception
   and such failures needs to be thoroughly explored and should lead to
@@ -130,7 +130,7 @@ the failure in ``self.fail`` method::
     try:
         process.run("stress_my_feature")
     except process.CmdError as details:
-        self.fail("The stress comamnd failed: %s" % details)
+        self.fail("The stress command failed: %s" % details)
 
 If your test compounds of many executions and you can't get this exception
 in other case then expected failure, you can simplify the code by using
@@ -223,7 +223,7 @@ expected location of a possibly non-existing file, which is useful when
 you intend to create it.
 
 .. tip:: When running tests you can use the ``--log-test-data-directories``
-         command line option log the test data directories that will be used
+         command line option to log the test data directories that will be used
          for that specific test and execution conditions (such as with or
          without variants).  Look for "Test data directories" in the test logs.
 
@@ -266,7 +266,7 @@ In test you can access those params by:
 
     self.params.get("sleep_method")    # returns "builtin"
     self.params.get("sleep_cycles", '*', 10)    # returns 1
-    self.params.get("sleep_length", "/*/variants/*"  # returns 600
+    self.params.get("sleep_length", "/*/variants/*", 100)  # returns 600
 
 .. note:: The path is important in complex scenarios where clashes might
           occur, because when there are multiple values with the same
