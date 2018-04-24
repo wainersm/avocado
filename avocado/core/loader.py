@@ -346,8 +346,27 @@ class TestLoaderProxy(object):
                     if issubclass(obj, test.Test):
                         test_class = obj
                         break
-        test_instance = test_class(**test_parameters)
-
+        try:
+            test_instance = test_class(**test_parameters)
+        except:
+            # Test initiatlization failed. it can leave garbage if
+            # super().__init__
+            test_parameters['methodName'] = 'test'
+            exception = stacktrace.prepare_exc_info(sys.exc_info())
+            test_parameters['exception'] = exception
+            if test_parameters.get('base_logdir'):
+                if test_parameters.get('name') is not None:
+                    name = test_parameters.get('name')
+                    print("name exist")
+                else:
+                    name = str(TestID(0, self.__class__.__name__))
+                base_logdir = os.path.join(test_parameters.get('base_logdir'), 'test-results')
+                logdir = os.path.join(base_logdir, name.str_filesystem)
+                if os.path.exists(logdir):
+                    print("log dir exist")
+            else:
+                pass # TODO
+            return test.TestError(**test_parameters)
         return test_instance
 
     def clear_plugins(self):
