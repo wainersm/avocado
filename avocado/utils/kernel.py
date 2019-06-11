@@ -13,6 +13,7 @@
 # Author: Ruda Moura <rmoura@redhat.com>
 # Author: Santhosh G <santhog4@linux.vnet.ibm.com>
 
+import abc
 import os
 import shutil
 import logging
@@ -148,3 +149,88 @@ def check_version(version):
     :param version: version to be compared with current kernel version
     """
     assert LooseVersion(os.uname()[2]) > LooseVersion(version), "Old kernel"
+
+class KernelProviderBase(abc.ABC):
+
+    def get(self, version, arch=None, checksum=None,
+        algorithm=None, cache_dir=None):
+
+        if cache_dir is None:
+            _cache_dir = tempfile.gettempdir()
+
+        if arch:
+            _arch = arch
+        else:
+            _arch = os.uname()[4]
+
+        return self.get_impl(version, _arch, _cache_dir, checksum,
+                             algorithm)
+
+    @abc.abstractmethod
+    def get_impl(self, version, arch, cache_dir, checksum, algorithm):
+        pass
+
+    @staticmethod
+    def get_providers():
+        return set(_ for _ in globals().values()
+            if (isinstance(_, type) and
+                issubclass(_, KernelProviderBase) and
+                hasattr(_, 'name')))
+
+class FedoraKernelProvider(KernelProviderBase):
+
+    name = 'Fedora'
+    edition = 'Everything'
+
+    def get_impl(self, version, arch, cache_dir, checksum, algorithm):
+        base_url = 'https://download.fedoraproject.org/pub/fedora/linux/releases/{version}/{edition}/{arch}/os/images/pxeboot'
+        kernel_base_url = base_url + '/vmlinuz'
+        initrd_base_url = base_url + '/initrd.img'
+
+        if arch in ('ppc64', 'ppc64le', 's390x'):
+            base_url = 'https://download.fedoraproject.org/pub/fedora-secondary/releases/{version}/{edition}/{arch}/os/images'
+            kernel_base_url = base_url + '/kernel.img'
+            initrd_base_url = base_url + '/initrd.img'
+
+        kernel_url = kernel_base_url.format(version=version, arch=arch,
+                                            edition=self.edition)
+        initrd_url = initrd_base_url.format(version=version, arch=arch,
+                                            edition=self.edition)
+
+        initrd_path = asset.Asset(name="initrd-%s-%s-%s" % (self.name, version,
+                                                            arch),
+                                  asset_hash=checksum,
+                                  algorithm=algorithm,
+                                  locations=[initrd_url],
+                                  cache_dirs=[cache_dir],
+                                  expire=None).fetch()
+
+        kernel_path = asset.Asset(name="vmlinuz-%s-%s-%s" % (self.name, version,
+                                                             arch),
+                                  asset_hash=checksum,
+                                  algorithm=algorithm,
+                                  locations=[kernel_url],
+                                  cache_dirs=[cache_dir],
+                                  expire=None).fetch()
+        return Kernel(kernel_path, checksum, Initrd(initrd_path, checksum))
+
+class Kernel:
+
+    def __init__(self, path, checksum, initrd=None):
+        self.path = path
+        self.checksum = checksum
+        self.initrd = initrd
+
+class Initrd:
+
+    def __init__(self, path, checksum):
+        self.path = path
+        self.checksum = checksum
+
+def get(name=None, version=None, build=None, arch=None, checksum=None,
+        algorithm=None, cache_dir=None, snapshot_dir=None):
+    provider = [p  for p in list_providers() if p.name == name]
+    print(provider)
+
+def list_providers():
+    return KernelProviderBase.get_providers()
